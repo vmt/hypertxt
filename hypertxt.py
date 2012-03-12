@@ -2,6 +2,7 @@ import os
 import sys
 import optparse
 import flask
+import markdown
 
 Docroot = None
 app = flask.Flask(__name__)
@@ -37,6 +38,9 @@ class Hypertxt:
     def render_txt(self, text):
         return text
 
+    def render_md(self, text):
+        return markdown.markdown(text)
+
     def GET(self):
         return flask.render_template("hypertxt.html", hypertxt=self)
 
@@ -63,7 +67,7 @@ class Hyperpath:
 
         self.isdir = isdir(self.realpath)
         self.name  = name if name else basename(self.path)
-        self.ext   = splitext(self.realpath)[1] if not self.isdir else None
+        self.ext   = splitext(self.realpath)[1][1:] if not self.isdir else None
 
     def join(self, *path):
         return Hyperpath(path=os.path.join(self.path, *path),
@@ -80,9 +84,26 @@ class Hyperpath:
         with open(self.realpath, "rt") as f:
             return f.read()
 
+    def rootpath(self):
+        return Hyperpath(path=".", root=self.root, name="main")
+
     def contains(self, item, isdir=False):
         p = os.path.join(self.realpath, item)
         return os.path.exists(p) and ( not isdir or os.path.isdir(p) )
+
+    def breadcrumbs(self):
+        crumbs = [self.rootpath()]
+        def pathsplit(p):
+            h, t = os.path.split(p)
+            if t:
+                if h:
+                    pathsplit(h)
+                assert t != "/"
+                crumbs.append(crumbs[-1].join(t))
+            else:
+                assert not h
+        pathsplit(self.relpath.lstrip("/").rstrip("/"))
+        return crumbs   
 
     @classmethod
     def handler(cls, path, root, name=None):

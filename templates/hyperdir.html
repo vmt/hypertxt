@@ -2,12 +2,24 @@
 
 {% block body %}
 
+<ul id="breadcrumbs">
+    {% for crumb in hyperdir.hyperpath.breadcrumbs() %}
+    <li>
+        <a href="/{{ crumb.relpath }}">{{ crumb.name }}</a>
+        {% if crumb.isdir %}/{% endif%}
+
+    </li>
+    {% endfor %}
+</ul>
+
 <div id="directory">
     <h1>{{ hyperdir.name }}</h1>
 
     <ul id="dir-lst">
     {% for entry in hyperdir.hyperpath.ls() %}
-        <li><a href="/{{ entry.relpath }}">{{ entry.name }}</a></li>
+        <li>
+        <a href="/{{ entry.relpath }}">{{ entry.name }}{% if entry.isdir %}/{% endif %}</a>
+        </li>
     {% endfor %}
     </ul>
 </div>

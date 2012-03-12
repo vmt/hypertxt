@@ -2,8 +2,69 @@
 <html lang="en">
 <head>
     <title>{{ title }}</title>
+    {% block style %}
+    <style type="text/css">
+    body { 
+        font-family: Helvetica;
+        font-size: 12px; 
+        margin: 0; padding: 0;
+        background-color: #eee; } 
+    #container  { 
+        background-color: #fff;
+        margin: 40px auto 40px auto; padding: 10px 20px 20px 20px;
+        width: 750px; border: 1px solid #ccc; }
+    .text-txt { 
+        margin-top: 20px;
+        font-family: "Courier"; 
+        font-size: 13px; 
+        white-space: pre; 
+        line-height: 15px;
+    }
+    .text-md { 
+        font-family: "Verdana"; 
+        font-size: 13px; 
+        line-height: 15px;
+    }
+    .text-md h1, .text-md h2, .text-md h3 { 
+        font-family: "Helvetica"; 
+    }
+    ul#dir-lst {
+        list-style-type: none;
+        list-style: none;
+        padding: 0; margin: 0;
+    }
+    #dir-lst li {
+        font-family: "Courier", monospace;
+        font-size: 14px;
+        padding-top: 4px;
+    }
+    #dir-lst li a {
+        text-decoration: none;
+        color: blue;
+    }
+    ul#breadcrumbs {
+        list-style-type: none;
+        list-style: none;
+        padding: 0; margin: 0;
+    }
+    #breadcrumbs li {
+        display: inline;
+        padding: 0; margin: 0;
+        padding-right: 2px;
+        font-weight: bold;
+        font-family: "Courier", monospace;
+        font-size: 12px;
+    }
+    #breadcrumbs li a {
+        text-decoration: none;
+        color: steelblue;
+    }
+    </style>
+    {% endblock %}
 </head>
 <body>
+    <div id="container">
     {% block body %}{% endblock %}
+    </div>
 </body>
 </html

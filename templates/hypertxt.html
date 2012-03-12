@@ -2,12 +2,22 @@
 
 {% block body %}
 
-<div id="view-txt">
-    <h1>{{ hypertxt.name }}</h1>
+<ul id="breadcrumbs">
+    {% for crumb in hypertxt.hyperpath.breadcrumbs() %}
+    <li>
+        <a href="/{{ crumb.relpath }}">{{ crumb.name }}</a>
+        {% if crumb.isdir %}/{% endif%}
 
-    <div class="text-{{ hypertxt.ext }}">
-        {{ hypertxt.text }}
-    </div>
+    </li>
+    {% endfor %}
+</ul>
+
+<div id="view-txt">
+    <div class="text-{{ hypertxt.ext }}">{{ hypertxt.text|safe }}</div>
+    <hr size="1"/>
+    <small style="font-family: monospace">
+        <em>{{ hypertxt.hyperpath.realpath }}</em>
+    </small>
 </div>
 
 {% endblock %}
