@@ -54,7 +54,7 @@ class Hyperpath:
         self.root     = root
         self.path     = path
         self.realpath = realpath(join(root, path))
-        self.relpath  = relpath(path, root)
+        self.relpath  = relpath(self.realpath, root)
     
         if not exists(self.realpath):
             raise self.DoesNotExist(self.realpath)
