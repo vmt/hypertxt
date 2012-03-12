@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+
+{% block body %}
+
+<div id="directory">
+    <h1>{{ hyperdir.name }}</h1>
+
+    <ul id="dir-lst">
+    {% for entry in hyperdir.hyperpath.ls() %}
+        <li><a href="/{{ entry.relpath }}">{{ entry.name }}</a></li>
+    {% endfor %}
+    </ul>
+</div>
+
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+
+{% block body %}
+
+<div id="view-txt">
+    <h1>{{ hypertxt.name }}</h1>
+
+    <div class="text-{{ hypertxt.ext }}">
+        {{ hypertxt.text }}
+    </div>
+</div>
+
+{% endblock %}

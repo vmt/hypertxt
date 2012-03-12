@@ -1,153 +1,123 @@
 import os
 import sys
 import optparse
-import BaseHTTPServer
-import urlparse
-import markdown
+import flask
 
-OutputHTMLHeader = """
-<html>
-<head>
-<title>%(title)s</title>
-<style type="text/css">
-html {
-  background-color: #fff;
-  font-size: 100%%;
-  padding: 0; margin: 0;
-}
-body {
-  font-family: "Lucida Grande", "Tahoma", "Verdana", "Trebuchet MS",
-               "sans-serif";
-  font-size: 12px;
-  padding: 0; margin: 0;
-}
-div#header {
-  width: 100%%;
-  background-color: #eee;
-  border-bottom: 1px solid #ccc;
-}
-span#document-path {
- display: inline-block;
-  padding: 5px 5px 5px 10px;
-}
-div#content {
-  width: 100%%;
-  padding: 0px;
-  margin: 20px 10px 0 20px;
-  width: 600px;
-  line-height: 16px;
-}
-</style>
-</head>
-<body>
-  <div id="header">
-    <span id="document-path">
-      <a href="/%(path)s">%(path)s</a>
-    </span>
-  </div>
-  <div id="content">
-"""
+Docroot = None
+app = flask.Flask(__name__)
 
-OutputHTMLFooter = """
-  </div>
-</body>
-</html>
-"""
 
-class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class Hyperdir:
 
-    class DocumentNotFound(Exception): pass
-    class DocumentInvalid(Exception): pass
-    class DocumentNotHandled(Exception): pass
+    def __init__(self, hyperpath):
+        assert hyperpath.isdir
+        self.hyperpath = hyperpath
+        self.name = self.hyperpath.name
 
-    docindex = 'index.md'
-    docroot  = os.path.abspath(os.getcwd())
+    def GET(self):
+        # get index files, if any
+        for index in ( "index.txt", "index.md", "INDEX" ):
+            if self.hyperpath.contains("index.md"):
+                return Hypertxt(self.hyperpath.join("index.md")).GET()
+        return flask.render_template("hyperdir.html", hyperdir=self)
 
-    def render_document(self, path):
-        # - Get the canonical path, enuring symbolic links
-        #   are taken and special dirs are resolved.
-        # - Check if the Document is indeed rooted under docroot.
-        # - Check if the Document exists. 
+class Hypertxt:
 
-        print self.docroot
+    def __init__(self, hyperpath):
+        assert not hyperpath.isdir
+        self.hyperpath = hyperpath
+        self.name      = self.hyperpath.name
+        self.ext       = self.hyperpath.ext
+        self.raw       = self.hyperpath.read()
+        self.text      = self.render(self.ext, self.raw)
 
-        realpath = os.path.realpath(os.path.join(self.docroot, path))
-        print realpath
-        if os.path.relpath(realpath, self.docroot) != path:
-            raise self.DocumentInvalid()
-        if not os.path.exists(realpath):
-            raise self.DocumentNotFound()
+    def render(self, ext, raw):
+        return getattr(self, "render_" + ext, self.render_txt)(raw)
 
-        if not os.path.isfile(realpath):
-            raise self.DocumentNotHandled()
-
-        text = open(realpath, "rt").read()
-        if os.path.splitext(realpath)[1] in ('.md', '.markdown'):
-            text = markdown.markdown(text)
-        else:
-            text = "<pre>" + text + "</pre>"
-
+    def render_txt(self, text):
         return text
 
-    def do_HEAD(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
-        
-    def do_GET(self):
-        u = urlparse.urlsplit(self.path)
+    def GET(self):
+        return flask.render_template("hypertxt.html", hypertxt=self)
 
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
 
-        path = u.path.lstrip('/')
-        if len(path) == 0:
-            path = self.docindex
-        body = ''
+class Hyperpath:
 
-        try: 
-            body = self.render_document(path)
-        except self.DocumentInvalid:
-            body = "<b>Invalid Document: %s</b>" % path
-        except self.DocumentNotFound:
-            body = "<b>Document Not Found: %s</b>" % path
-        except self.DocumentNotHandled:
-            body = "<b>Document Not Handled: %s</b>" % path
-        finally:
-            self.wfile.write(
-                OutputHTMLHeader % { 'title': path,
-                                     'path' : path }
-                )
-            self.wfile.write(body)
-            self.wfile.write(OutputHTMLFooter)
+    class DoesNotExist(Exception): pass
+    class AccessDenied(Exception): pass
 
-if __name__ == '__main__':
+    def __init__(self, path, root, name=None):
+        from os.path import exists, isabs, isdir, realpath, relpath, join
+        from os.path import basename, splitext
+        assert isabs(root) and not isabs(path)
 
-    # Command-line options
+        self.root     = root
+        self.path     = path
+        self.realpath = realpath(join(root, path))
+        self.relpath  = relpath(path, root)
+    
+        if not exists(self.realpath):
+            raise self.DoesNotExist(self.realpath)
+        if not self.realpath.startswith(self.root):
+            raise self.AccessDenied()
+
+        self.isdir = isdir(self.realpath)
+        self.name  = name if name else basename(self.path)
+        self.ext   = splitext(self.realpath)[1] if not self.isdir else None
+
+    def join(self, *path):
+        return Hyperpath(path=os.path.join(self.path, *path),
+                         root=self.root)
+
+    def ls(self):
+        if not self.isdir:
+            raise AttributeError("Cannot ls a file")
+        return [ self.join(p) for p in os.listdir(self.realpath) ]
+
+    def read(self):
+        if self.isdir:
+            raise AttributeError("Cannot read a directory")
+        with open(self.realpath, "rt") as f:
+            return f.read()
+
+    def contains(self, item, isdir=False):
+        p = os.path.join(self.realpath, item)
+        return os.path.exists(p) and ( not isdir or os.path.isdir(p) )
+
+    @classmethod
+    def handler(cls, path, root, name=None):
+        hyperpath = cls(path, root, name)
+        if hyperpath.isdir:
+            return Hyperdir(hyperpath)
+        else:
+            return Hypertxt(hyperpath)
+
+@app.route("/<path:path>")
+def hypertxt_get(path):
+    try:
+        return Hyperpath.handler(path, Docroot).GET()
+    except Hyperpath.DoesNotExist:
+        flask.abort(404)
+    except Hyperpath.AccessDenied:
+        flask.abort(401)
+
+@app.route("/")
+def hypertxt_main():
+    return Hyperpath.handler(".", Docroot, name="Main").GET()
+
+
+if __name__ == "__main__":
     optparser = optparse.OptionParser()
-
     optparser.add_option("--host", dest="host", default="localhost",
                          help="Server HOSTNAME")
-    optparser.add_option("--port", dest="port", default=8080,
-                         type="int", help="Server PORT")
+    optparser.add_option("--port", dest="port", default="8080",
+                         help="Server PORT")
     optparser.add_option("--root", dest="root", default=os.getcwd(),
                          help="Document root")
     optparser.add_option("--verbose", action="store_true", dest="verbose", 
                          default=False, help="Verbose")
-
     (options, args) = optparser.parse_args()
-
-    print "Starting server ..."
-    print "Host=%s" % options.host
-    print "Port=%s" % options.port
-    print "Root=%s" % options.root
-
-    RequestHandler.docroot = options.root
-
-    try:
-        httpd = BaseHTTPServer.HTTPServer((options.host, options.port), 
-                                          RequestHandler)
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        pass
+    
+    Docroot = os.path.realpath(options.root)
+    app.debug = True
+    app.run('localhost')
