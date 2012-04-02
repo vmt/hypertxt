@@ -12,8 +12,18 @@
     {% endfor %}
 </ul>
 
+{% if hypertxt %}
+<div id="view-txt">
+    <div class="text-{{ hypertxt.ext }}">{{ hypertxt.text|safe }}</div>
+    <hr size="1"/>
+</div>
+{% endif %}
+
+
+
 <div id="directory">
-    <h1>{{ hyperdir.name }}</h1>
+
+    <h1>{{ hyperdir.name }}/</h1>
 
     <ul id="dir-lst">
     {% for entry in hyperdir.hyperpath.ls() %}

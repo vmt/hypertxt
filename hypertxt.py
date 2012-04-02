@@ -17,10 +17,13 @@ class Hyperdir:
 
     def GET(self):
         # get index files, if any
+        hypertxt = None
         for index in ( "index.txt", "index.md", "INDEX" ):
             if self.hyperpath.contains("index.md"):
-                return Hypertxt(self.hyperpath.join("index.md")).GET()
-        return flask.render_template("hyperdir.html", hyperdir=self)
+                hypertxt = Hypertxt(self.hyperpath.join("index.md"))
+                break
+        return flask.render_template("hyperdir.html", hyperdir=self,
+                                                      hypertxt=hypertxt)
 
 class Hypertxt:
 
